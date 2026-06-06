@@ -9,7 +9,7 @@ Pada implementasi ini, ESP32 dan sensor AD8232 tidak digunakan secara langsung. 
 ## Arsitektur Sistem
 
 Dummy ECG Generator
-↓
+->
 FastAPI Backend
 ↓
 Prediksi NORMAL / AFIB
