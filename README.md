@@ -69,8 +69,7 @@ Membuat SNS topic SmartHealthAFibAlert.
 Mengirim email alert ketika AFIB terdeteksi.
 Membuat S3 bucket untuk dokumentasi.
 Upload screenshot bukti AWS ke S3.
-Pembagian Tugas
-Cloud/DevOps
+
 
 Tugas: Dev Ops
 
@@ -90,6 +89,7 @@ Alert AFIB terkirim lewat SNS.
 Screenshot AWS tersedia di S3.
 
 
+
 Tugas: Backend
 
 Merapikan main.py.
@@ -105,6 +105,7 @@ requirements.txt
 Backend bisa jalan di localhost:8000.
 
 
+
 Tugas:AI/ML
 
 Menjelaskan dummy ECG normal dan AFIB.
@@ -117,6 +118,7 @@ Output:
 Penjelasan metode dummy ECG.
 Penjelasan threshold AFIB.
 Fungsi generate ECG normal dan AFIB.
+
 
 
 Tugas:Frontend
@@ -136,6 +138,7 @@ style.css
 script.js.
 
 
+
 Tugas:Dokumentasi
 
 Menyusun laporan.
@@ -151,6 +154,7 @@ PPT.
 Diagram arsitektur.
 Screenshot hasil pengujian.
 Kondisi Saat AWS Menyala
+
 
 ## Saat AWS menyala, backend berjalan di EC2.
 
