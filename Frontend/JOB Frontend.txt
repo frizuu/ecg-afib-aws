@@ -1,0 +1,69 @@
+Frontend Smart Health Monitoring
+
+Tugas frontend adalah membuat dashboard untuk menampilkan hasil monitoring kondisi pasien berdasarkan data dari backend.
+
+Komponen minimal dashboard:
+
+1. Status pasien
+   - NORMAL
+   - AFIB
+
+2. BPM
+   - Menampilkan nilai detak jantung dari response backend.
+
+3. Probabilitas AFIB
+   - Menampilkan nilai afib_probability.
+
+4. Sample count
+   - Menampilkan jumlah sampel ECG.
+   - Sistem menggunakan 1250 sampel.
+
+5. Tombol Generate Normal
+   - Saat diklik, frontend memanggil endpoint:
+     /generate-window?condition=normal
+
+6. Tombol Generate AFIB
+   - Saat diklik, frontend memanggil endpoint:
+     /generate-window?condition=afib
+
+7. History monitoring
+   - Menampilkan riwayat data dari endpoint:
+     /history
+
+Endpoint yang digunakan:
+
+Saat backend berjalan lokal:
+const API_BASE = "http://localhost:8000";
+
+Saat AWS menyala:
+const API_BASE = "http://IP_EC2:8000";
+
+Endpoint:
+GET /generate-window?condition=normal
+GET /generate-window?condition=afib
+GET /latest
+GET /history
+
+Contoh response backend:
+
+{
+  "status": "PREDICTED",
+  "patient_id": "P001",
+  "data_source": "dummy",
+  "requested_condition": "AFIB",
+  "label": "AFIB",
+  "afib_probability": 0.8054,
+  "bpm": 121,
+  "sample_count": 1250,
+  "timestamp": "2026-06-06T07:15:10"
+}
+
+Output yang harus dibuat oleh frontend:
+
+1. index.html
+2. style.css
+3. script.js
+
+Catatan:
+Jika AWS dimatikan, frontend tetap bisa dikerjakan menggunakan backend lokal dengan API_BASE localhost.
+Jika AWS dinyalakan kembali, API_BASE diganti ke IP EC2 terbaru.
