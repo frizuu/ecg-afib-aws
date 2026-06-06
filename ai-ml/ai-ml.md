@@ -35,7 +35,7 @@ Output yang diharapkan:
   "bpm": 60,
   "sample_count": 1250
 }
-
+```
 2. AFIB
 
 Data AFIB dibuat dengan karakteristik:
