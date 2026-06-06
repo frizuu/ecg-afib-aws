@@ -11,15 +11,15 @@ Pada implementasi ini, ESP32 dan sensor AD8232 tidak digunakan secara langsung. 
 Dummy ECG Generator
 ->
 FastAPI Backend
-↓
+->
 Prediksi NORMAL / AFIB
-↓
+->
 DynamoDB
-↓
+->
 SNS Alert jika AFIB
-↓
+->
 Frontend Dashboard
-↓
+->
 S3 untuk dokumentasi dan screenshot
 
 ## Komponen AWS
