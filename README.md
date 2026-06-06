@@ -72,7 +72,7 @@ Upload screenshot bukti AWS ke S3.
 Pembagian Tugas
 Cloud/DevOps
 
-Tugas:
+Tugas: Dev Ops
 
 Menyiapkan EC2.
 Mengatur Security Group.
@@ -88,9 +88,9 @@ Backend berjalan di AWS.
 Data masuk DynamoDB.
 Alert AFIB terkirim lewat SNS.
 Screenshot AWS tersedia di S3.
-Backend
 
-Tugas:
+
+Tugas: Backend
 
 Merapikan main.py.
 Membuat endpoint API.
@@ -103,9 +103,9 @@ Output:
 main.py
 requirements.txt
 Backend bisa jalan di localhost:8000.
-AI/ML
 
-Tugas:
+
+Tugas:AI/ML
 
 Menjelaskan dummy ECG normal dan AFIB.
 Menjelaskan window 1250 sampel.
@@ -117,9 +117,9 @@ Output:
 Penjelasan metode dummy ECG.
 Penjelasan threshold AFIB.
 Fungsi generate ECG normal dan AFIB.
-Frontend
 
-Tugas:
+
+Tugas:Frontend
 
 Membuat dashboard HTML/CSS/JS.
 Menampilkan status NORMAL atau AFIB.
@@ -134,9 +134,9 @@ Output:
 index.html
 style.css
 script.js.
-Dokumentasi
 
-Tugas:
+
+Tugas:Dokumentasi
 
 Menyusun laporan.
 Membuat diagram arsitektur.
