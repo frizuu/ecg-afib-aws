@@ -71,7 +71,7 @@ Membuat S3 bucket untuk dokumentasi.
 Upload screenshot bukti AWS ke S3.
 
 
-Tugas: Dev Ops
+## Tugas: Dev Ops
 
 Menyiapkan EC2.
 Mengatur Security Group.
@@ -90,7 +90,7 @@ Screenshot AWS tersedia di S3.
 
 
 
-Tugas: Backend
+## Tugas: Backend
 
 Merapikan main.py.
 Membuat endpoint API.
@@ -106,7 +106,7 @@ Backend bisa jalan di localhost:8000.
 
 
 
-Tugas:AI/ML
+## Tugas:AI/ML
 
 Menjelaskan dummy ECG normal dan AFIB.
 Menjelaskan window 1250 sampel.
@@ -121,7 +121,7 @@ Fungsi generate ECG normal dan AFIB.
 
 
 
-Tugas:Frontend
+## Tugas:Frontend
 
 Membuat dashboard HTML/CSS/JS.
 Menampilkan status NORMAL atau AFIB.
@@ -139,7 +139,7 @@ script.js.
 
 
 
-Tugas:Dokumentasi
+## Tugas:Dokumentasi
 
 Menyusun laporan.
 Membuat diagram arsitektur.
