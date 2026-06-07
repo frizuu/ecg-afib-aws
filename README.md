@@ -3,7 +3,7 @@
 Backend sederhana untuk deteksi aritmia menggunakan model CNN 1D / dummy inference. Proyek ini disiapkan agar dapat dijalankan secara lokal dan mudah dibawa ke AWS menggunakan Docker.
 
 ## Struktur utamag
-- `backend/app.py` - FastAPI server dengan endpoint `/generate`, `/predict`, `/predict-dummy`, `/latest`, `/history`
+- `backend/app.py` - FastAPI server dengan endpoint `/generate`, `/generate-afib`, `/predict`, `/predict-dummy`, `/latest`, `/history`
 - `backend/model.py` - model CNN dummy atau pemuatan model H5 jika ada
 - `backend/signal.py` - preprocessing sinyal ECG dan generator data dummy
 - `backend/database.py` - penyimpanan hasil prediksi ke DynamoDB
@@ -27,12 +27,14 @@ Backend sederhana untuk deteksi aritmia menggunakan model CNN 1D / dummy inferen
 
 ## Endpoint
 - `GET /generate`
-  - Menghasilkan data ECG dummy 5 detik dan label contoh
+  - Menghasilkan data ECG dummy 5 detik. Tambahkan `?afib=true` untuk membuat sinyal AFIB.
+- `GET /generate-afib`
+  - Menghasilkan data ECG dummy AFIB secara langsung
 - `POST /predict`
   - Menerima JSON: `{ "signal": [float], "sample_rate": 250 }`
   - Menyimpan dan mengembalikan probabilitas AFIB, label, dan BPM
 - `POST /predict-dummy`
-  - Membuat data ECG dummy, menjalankan prediksi, lalu menyimpan hasilnya ke DynamoDB
+  - Membuat data ECG dummy, menjalankan prediksi, lalu menyimpan hasilnya ke DynamoDB. Tambahkan `?afib=true` untuk dummy AFIB.
 - `GET /latest`
   - Mengembalikan metadata model dan prediksi terakhir
 - `GET /history`
@@ -58,6 +60,14 @@ curl -X GET http://127.0.0.1:8000/generate
 ```
 
 ```powershell
+curl -X GET http://127.0.0.1:8000/generate-afib
+```
+
+```powershell
+curl -X GET "http://127.0.0.1:8000/generate?afib=true"
+```
+
+```powershell
 curl -X POST http://127.0.0.1:8000/predict \
   -H "Content-Type: application/json" \
   -d "{\"signal\": [0.0, 0.1, -0.05, ...], \"sample_rate\": 250}"
@@ -65,6 +75,10 @@ curl -X POST http://127.0.0.1:8000/predict \
 
 ```powershell
 curl -X POST http://127.0.0.1:8000/predict-dummy
+```
+
+```powershell
+curl -X POST "http://127.0.0.1:8000/predict-dummy?afib=true"
 ```
 
 ## Deployment ke AWS

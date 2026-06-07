@@ -28,8 +28,18 @@ async def startup_event():
 
 
 @app.get("/generate")
-async def generate():
-    sample, metadata = generate_dummy_ecg(duration_sec=5, fs=250)
+async def generate(afib: bool = False):
+    sample, metadata = generate_dummy_ecg(duration_sec=5, fs=250, afib=afib)
+    return {
+        "signal": sample.tolist(),
+        "metadata": metadata,
+        "model_info": MODEL_INFO,
+    }
+
+
+@app.get("/generate-afib")
+async def generate_afib():
+    sample, metadata = generate_dummy_ecg(duration_sec=5, fs=250, afib=True)
     return {
         "signal": sample.tolist(),
         "metadata": metadata,
@@ -55,8 +65,8 @@ async def predict(request: PredictRequest):
 
 
 @app.post("/predict-dummy")
-async def predict_dummy():
-    sample, metadata = generate_dummy_ecg(duration_sec=5, fs=250)
+async def predict_dummy(afib: bool = False):
+    sample, metadata = generate_dummy_ecg(duration_sec=5, fs=250, afib=afib)
     result = predict_signal(sample, metadata["sample_rate"])
     saved_item = save_prediction(
         result,
