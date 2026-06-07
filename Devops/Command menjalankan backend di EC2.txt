@@ -1,0 +1,16 @@
+Command menjalankan backend di EC2:
+
+cd ~/smart-health-monitoring/backend-test
+source venv/bin/activate
+uvicorn main:app --host 0.0.0.0 --port 8000
+
+Jika EC2 dimatikan lalu dinyalakan lagi:
+
+1. Start AWS Learner Lab.
+2. Start EC2 instance.
+3. Copy Public IPv4 baru.
+4. SSH ke EC2.
+5. Jalankan command di atas.
+
+Catatan:
+Jika Public IP berubah, frontend harus mengganti API_BASE ke IP EC2 terbaru.
