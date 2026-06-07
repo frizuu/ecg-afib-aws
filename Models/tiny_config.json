@@ -1,0 +1,11 @@
+{
+  "target_fs": 250,
+  "win_sec": 2,
+  "seg_len": 500,
+  "bandpass_low": 0.5,
+  "bandpass_high": 40.0,
+  "threshold": 0.5,
+  "input_type": "zscore_per_window",
+  "quantized": true,
+  "int8": true
+}

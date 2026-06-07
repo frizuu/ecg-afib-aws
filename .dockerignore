@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+*.pkl
+*.h5
+*.tflite
+venv/
+.env
+.envrc
+
+# Optional local dataset and model directories
+Models/
+Dataset/

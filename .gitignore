@@ -216,3 +216,9 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Local dataset and model artifacts
+Dataset/
+Models/*.h5
+Models/*.tflite
+Models/model_data.h
