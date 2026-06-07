@@ -4,3 +4,4 @@ numpy>=1.25.0
 scipy>=1.11.0
 tensorflow>=2.15.0
 pydantic>=2.8.0
+boto3>=1.34.0

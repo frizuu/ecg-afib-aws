@@ -3,6 +3,7 @@ from typing import List, Optional
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
+from backend.database import get_latest_prediction, get_prediction_history, save_prediction
 from backend.model import MODEL_INFO, get_model, predict_signal
 from backend.signal import generate_dummy_ecg
 
@@ -42,14 +43,47 @@ async def predict(request: PredictRequest):
         raise HTTPException(status_code=400, detail="Signal harus memiliki setidaknya 100 sampel")
 
     result = predict_signal(request.signal, request.sample_rate, threshold=request.threshold)
+    saved_item = save_prediction(
+        result,
+        source="request",
+        sample_rate=request.sample_rate,
+        signal_length=len(request.signal),
+    )
     global last_prediction
-    last_prediction = result
-    return result
+    last_prediction = saved_item
+    return saved_item
+
+
+@app.post("/predict-dummy")
+async def predict_dummy():
+    sample, metadata = generate_dummy_ecg(duration_sec=5, fs=250)
+    result = predict_signal(sample, metadata["sample_rate"])
+    saved_item = save_prediction(
+        result,
+        source="dummy",
+        sample_rate=metadata["sample_rate"],
+        signal_length=len(sample),
+        metadata=metadata,
+    )
+    global last_prediction
+    last_prediction = saved_item
+    return saved_item
 
 
 @app.get("/latest")
 async def latest():
     return {
         "model_info": MODEL_INFO,
-        "last_prediction": last_prediction,
+        "last_prediction": get_latest_prediction() or last_prediction,
+    }
+
+
+@app.get("/history")
+async def history(limit: int = 20):
+    if limit < 1 or limit > 100:
+        raise HTTPException(status_code=400, detail="Limit harus antara 1 sampai 100")
+
+    return {
+        "model_info": MODEL_INFO,
+        "items": get_prediction_history(limit=limit),
     }

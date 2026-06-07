@@ -2,10 +2,11 @@
 
 Backend sederhana untuk deteksi aritmia menggunakan model CNN 1D / dummy inference. Proyek ini disiapkan agar dapat dijalankan secara lokal dan mudah dibawa ke AWS menggunakan Docker.
 
-## Struktur utama
-- `backend/app.py` - FastAPI server dengan endpoint `/generate`, `/predict`, `/latest`
+## Struktur utamag
+- `backend/app.py` - FastAPI server dengan endpoint `/generate`, `/predict`, `/predict-dummy`, `/latest`, `/history`
 - `backend/model.py` - model CNN dummy atau pemuatan model H5 jika ada
 - `backend/signal.py` - preprocessing sinyal ECG dan generator data dummy
+- `backend/database.py` - penyimpanan hasil prediksi ke DynamoDB
 - `requirements.txt` - paket Python untuk runtime
 - `Dockerfile` - container image untuk menjalankan backend
 
@@ -29,9 +30,27 @@ Backend sederhana untuk deteksi aritmia menggunakan model CNN 1D / dummy inferen
   - Menghasilkan data ECG dummy 5 detik dan label contoh
 - `POST /predict`
   - Menerima JSON: `{ "signal": [float], "sample_rate": 250 }`
-  - Mengembalikan probabilitas AFIB, label, dan BPM
+  - Menyimpan dan mengembalikan probabilitas AFIB, label, dan BPM
+- `POST /predict-dummy`
+  - Membuat data ECG dummy, menjalankan prediksi, lalu menyimpan hasilnya ke DynamoDB
 - `GET /latest`
   - Mengembalikan metadata model dan prediksi terakhir
+- `GET /history`
+  - Mengembalikan daftar hasil prediksi yang tersimpan di DynamoDB
+
+## Konfigurasi DynamoDB
+Backend menyimpan hasil prediksi ke tabel DynamoDB. Nama tabel dibaca dari environment variable:
+
+```powershell
+$env:DYNAMODB_TABLE="ecg_predictions"
+$env:AWS_REGION="us-east-1"
+```
+
+Struktur tabel yang disarankan:
+
+- Partition key: `prediction_id` bertipe `String`
+
+Saat dijalankan di EC2, pastikan instance memiliki IAM Role dengan izin `dynamodb:PutItem` dan `dynamodb:Scan` untuk tabel tersebut.
 
 ## Contoh request
 ```powershell
@@ -42,6 +61,10 @@ curl -X GET http://127.0.0.1:8000/generate
 curl -X POST http://127.0.0.1:8000/predict \
   -H "Content-Type: application/json" \
   -d "{\"signal\": [0.0, 0.1, -0.05, ...], \"sample_rate\": 250}"
+```
+
+```powershell
+curl -X POST http://127.0.0.1:8000/predict-dummy
 ```
 
 ## Deployment ke AWS
