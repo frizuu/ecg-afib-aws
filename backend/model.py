@@ -13,7 +13,7 @@ from backend.config import (
     MODEL_S3_BUCKET,
     MODEL_S3_KEY,
 )
-from backend.signal import prepare_window, calculate_bpm
+from backend.signal_utils import prepare_window, calculate_bpm
 
 SEG_LEN = 1250
 MODEL_INFO = {
