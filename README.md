@@ -3,7 +3,7 @@
 Backend FastAPI untuk deteksi AFIB berbasis ECG yang disiapkan untuk AWS EC2 sesuai arsitektur: model H5 dari S3, prediksi ke DynamoDB, raw signal/report ke S3, notifikasi AFIB ke SNS, dan log aplikasi ke CloudWatch melalui log EC2/container.
 
 ## Struktur utama
-- `backend/app.py` - FastAPI server dengan endpoint `/generate`, `/generate-afib`, `/predict`, `/predict-dummy`, `/latest`, `/history`, `/health`, `/test`
+- `backend/app.py` - FastAPI server dengan endpoint `/generate`, `/predict`, `/predict-dummy`, `/latest`, `/history`
 - `backend/config.py` - konfigurasi runtime dari environment variables AWS
 - `backend/aws_services.py` - integrasi S3 untuk artefak prediksi dan SNS untuk alert AFIB
 - `backend/model.py` - load model H5 dari S3 ke EC2/container sebelum inference
@@ -26,9 +26,7 @@ Siapkan resource berikut sebelum menjalankan container di EC2:
 
 ## Endpoint
 - `GET /generate`
-  - Menghasilkan data ECG dummy 5 detik. Tambahkan `?afib=true` untuk membuat sinyal AFIB.
-- `GET /generate-afib`
-  - Menghasilkan data ECG dummy AFIB secara langsung
+  - Menghasilkan data ECG dummy 5 detik. Default `?afib=false` membuat sinyal normal, sedangkan `?afib=true` membuat sinyal AFIB.
 - `POST /predict`
   - Menerima JSON: `{ "signal": [float], "sample_rate": 250, "threshold": 0.5, "metadata": {} }`
   - Menyimpan metadata ke DynamoDB, artefak ke S3, dan mengirim SNS jika label `AFIB`
@@ -38,9 +36,6 @@ Siapkan resource berikut sebelum menjalankan container di EC2:
   - Mengembalikan metadata model dan prediksi terakhir
 - `GET /history`
   - Mengembalikan daftar hasil prediksi yang tersimpan di DynamoDB
-- `GET /health` atau `GET /test`
-  - Health check untuk EC2 load balancer atau monitoring
-
 ## Environment variables
 
 ```bash
@@ -57,7 +52,7 @@ SNS_TOPIC_ARN=arn:aws:sns:ap-southeast-1:123456789012:ecg-afib-alerts
 SNS_ALERT_ON_LABEL=AFIB
 ```
 
-`MODEL_ALLOW_DUMMY=false` membuat service gagal start jika model H5 tidak tersedia. Gunakan `true` hanya untuk demo endpoint dan smoke test.
+`MODEL_ALLOW_DUMMY=false` membuat service gagal start jika model H5 tidak tersedia. Gunakan `true` hanya untuk demo sementara.
 
 ## Jalankan di EC2 dengan Docker
 
@@ -74,10 +69,6 @@ docker run -d \
 CloudWatch dapat membaca log dari stdout container melalui CloudWatch Agent atau integrasi log service container yang digunakan.
 
 ## Contoh request
-```bash
-curl http://EC2_PUBLIC_IP:8000/health
-```
-
 ```bash
 curl "http://EC2_PUBLIC_IP:8000/generate?afib=true"
 ```

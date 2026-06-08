@@ -39,46 +39,12 @@ async def startup_event():
     logger.info("ECG AFIB backend started")
 
 
-@app.get("/health")
-async def health():
-    try:
-        get_model()
-        model_status = "loaded"
-    except ModelLoadError as exc:
-        model_status = f"unavailable: {exc}"
-
-    return {
-        "status": "ok" if model_status == "loaded" else "degraded",
-        "model_status": model_status,
-        "model_info": MODEL_INFO,
-    }
-
-
-@app.get("/test")
-async def test():
-    return await health()
-
-
 @app.get("/generate")
 async def generate(afib: bool = False):
     sample, metadata = generate_dummy_ecg(
         duration_sec=DEFAULT_SIGNAL_DURATION_SEC,
         fs=DEFAULT_SAMPLE_RATE,
         afib=afib,
-    )
-    return {
-        "signal": sample.tolist(),
-        "metadata": metadata,
-        "model_info": MODEL_INFO,
-    }
-
-
-@app.get("/generate-afib")
-async def generate_afib():
-    sample, metadata = generate_dummy_ecg(
-        duration_sec=DEFAULT_SIGNAL_DURATION_SEC,
-        fs=DEFAULT_SAMPLE_RATE,
-        afib=True,
     )
     return {
         "signal": sample.tolist(),
