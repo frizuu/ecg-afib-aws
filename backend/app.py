@@ -9,7 +9,7 @@ from backend.aws_services import AwsIntegrationError, publish_afib_alert, upload
 from backend.config import DEFAULT_SAMPLE_RATE, DEFAULT_SIGNAL_DURATION_SEC
 from backend.database import get_latest_prediction, get_prediction_history, save_prediction
 from backend.model import MODEL_INFO, ModelLoadError, get_model, predict_signal
-from backend.signal import generate_dummy_ecg
+from backend.signal_utils import generate_dummy_ecg
 
 logging.basicConfig(
     level=logging.INFO,
