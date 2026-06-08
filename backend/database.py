@@ -1,14 +1,13 @@
-import os
 from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any, Optional
 from uuid import uuid4
 
 import boto3
+from boto3.dynamodb.conditions import Key
+from botocore.exceptions import BotoCoreError, ClientError
 
-
-AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
-DYNAMODB_TABLE = os.getenv("DYNAMODB_TABLE", "ecg_predictions")
+from backend.config import AWS_REGION, DYNAMODB_CREATED_AT_INDEX, DYNAMODB_LATEST_SCAN_LIMIT, DYNAMODB_TABLE
 
 _table = None
 
@@ -47,10 +46,15 @@ def save_prediction(
     sample_rate: int,
     signal_length: int,
     metadata: Optional[dict] = None,
+    artifact_uris: Optional[dict] = None,
+    sns_message_id: Optional[str] = None,
+    prediction_id: Optional[str] = None,
+    created_at: Optional[str] = None,
 ) -> dict:
-    created_at = datetime.now(timezone.utc).isoformat()
+    created_at = created_at or datetime.now(timezone.utc).isoformat()
     item = {
-        "prediction_id": str(uuid4()),
+        "prediction_id": prediction_id or str(uuid4()),
+        "record_type": "prediction",
         "created_at": created_at,
         "source": source,
         "sample_rate": sample_rate,
@@ -61,6 +65,9 @@ def save_prediction(
         "bpm": prediction["bpm"],
         "model_info": prediction["model_info"],
         "metadata": metadata or {},
+        "raw_signal_s3_uri": (artifact_uris or {}).get("raw_signal_s3_uri"),
+        "report_s3_uri": (artifact_uris or {}).get("report_s3_uri"),
+        "sns_message_id": sns_message_id,
     }
 
     get_table().put_item(Item=_to_dynamodb_value(item))
@@ -68,7 +75,16 @@ def save_prediction(
 
 
 def get_latest_prediction() -> Optional[dict]:
-    response = get_table().scan(Limit=50)
+    try:
+        response = get_table().query(
+            IndexName=DYNAMODB_CREATED_AT_INDEX,
+            KeyConditionExpression=Key("record_type").eq("prediction"),
+            ScanIndexForward=False,
+            Limit=1,
+        )
+    except (BotoCoreError, ClientError):
+        response = get_table().scan(Limit=DYNAMODB_LATEST_SCAN_LIMIT)
+
     items = response.get("Items", [])
     if not items:
         return None
@@ -78,7 +94,16 @@ def get_latest_prediction() -> Optional[dict]:
 
 
 def get_prediction_history(limit: int = 20) -> list[dict]:
-    response = get_table().scan(Limit=limit)
+    try:
+        response = get_table().query(
+            IndexName=DYNAMODB_CREATED_AT_INDEX,
+            KeyConditionExpression=Key("record_type").eq("prediction"),
+            ScanIndexForward=False,
+            Limit=limit,
+        )
+    except (BotoCoreError, ClientError):
+        response = get_table().scan(Limit=DYNAMODB_LATEST_SCAN_LIMIT)
+
     items = response.get("Items", [])
     items.sort(key=lambda item: item["created_at"], reverse=True)
     return [_from_dynamodb_value(item) for item in items[:limit]]

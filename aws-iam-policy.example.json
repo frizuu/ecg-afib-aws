@@ -1,0 +1,42 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ReadModelFromS3",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject"
+      ],
+      "Resource": "arn:aws:s3:::YOUR_MODEL_BUCKET/models/afib_cnn_1d_best.h5"
+    },
+    {
+      "Sid": "WritePredictionArtifactsToS3",
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutObject"
+      ],
+      "Resource": "arn:aws:s3:::YOUR_PREDICTION_BUCKET/ecg-predictions/*"
+    },
+    {
+      "Sid": "WriteAndReadPredictionsFromDynamoDB",
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:PutItem",
+        "dynamodb:Scan",
+        "dynamodb:Query"
+      ],
+      "Resource": [
+        "arn:aws:dynamodb:YOUR_REGION:YOUR_ACCOUNT_ID:table/ecg_predictions",
+        "arn:aws:dynamodb:YOUR_REGION:YOUR_ACCOUNT_ID:table/ecg_predictions/index/prediction_created_at_index"
+      ]
+    },
+    {
+      "Sid": "PublishAfibNotifications",
+      "Effect": "Allow",
+      "Action": [
+        "sns:Publish"
+      ],
+      "Resource": "arn:aws:sns:YOUR_REGION:YOUR_ACCOUNT_ID:YOUR_SNS_TOPIC"
+    }
+  ]
+}

@@ -1,15 +1,20 @@
-import os
-from pathlib import Path
+import logging
 import numpy as np
+import boto3
+from botocore.exceptions import BotoCoreError, ClientError
 from tensorflow.keras.models import load_model, Sequential
 from tensorflow.keras.layers import Conv1D, MaxPooling1D, Flatten, Dense, Dropout, BatchNormalization
 from tensorflow.keras.optimizers import Adam
 
+from backend.config import (
+    AWS_REGION,
+    LOCAL_MODEL_PATH,
+    MODEL_ALLOW_DUMMY,
+    MODEL_S3_BUCKET,
+    MODEL_S3_KEY,
+)
 from backend.signal import prepare_window, calculate_bpm
 
-ROOT = Path(__file__).resolve().parent.parent
-MODELS_DIR = ROOT / "Models"
-H5_MODEL_PATH = MODELS_DIR / "afib_cnn_1d_best.h5"
 SEG_LEN = 1250
 MODEL_INFO = {
     "name": "ecg-afib-cnn1d-backend",
@@ -20,6 +25,11 @@ MODEL_INFO = {
 }
 
 _model = None
+logger = logging.getLogger(__name__)
+
+
+class ModelLoadError(RuntimeError):
+    pass
 
 
 def build_dummy_model():
@@ -47,10 +57,29 @@ def get_model():
     if _model is not None:
         return _model
 
-    if H5_MODEL_PATH.exists():
-        _model = load_model(H5_MODEL_PATH)
-    else:
+    if MODEL_S3_BUCKET:
+        LOCAL_MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            boto3.client("s3", region_name=AWS_REGION).download_file(
+                MODEL_S3_BUCKET,
+                MODEL_S3_KEY,
+                str(LOCAL_MODEL_PATH),
+            )
+            logger.info("Downloaded model from S3", extra={"bucket": MODEL_S3_BUCKET, "key": MODEL_S3_KEY})
+        except (BotoCoreError, ClientError) as exc:
+            raise ModelLoadError(f"Gagal download model dari s3://{MODEL_S3_BUCKET}/{MODEL_S3_KEY}: {exc}") from exc
+
+    if LOCAL_MODEL_PATH.exists():
+        _model = load_model(LOCAL_MODEL_PATH)
+        logger.info("Loaded ECG model", extra={"path": str(LOCAL_MODEL_PATH)})
+    elif MODEL_ALLOW_DUMMY:
         _model = build_dummy_model()
+        logger.warning("Using dummy untrained ECG model because MODEL_ALLOW_DUMMY=true")
+    else:
+        raise ModelLoadError(
+            "Model H5 tidak ditemukan. Set MODEL_S3_BUCKET dan MODEL_S3_KEY, "
+            "atau aktifkan MODEL_ALLOW_DUMMY=true hanya untuk demo."
+        )
     return _model
 
 
