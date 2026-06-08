@@ -1,0 +1,200 @@
+body {
+  margin: 0;
+  font-family: Inter, sans-serif;
+  background: #06152d;
+  color: white;
+}
+
+.dashboard-container {
+  display: flex;
+  min-height: 100vh;
+}
+
+.main-content {
+  flex: 1;
+  padding: 30px;
+}
+
+.page-title {
+  font-size: 32px;
+  font-weight: 700;
+}
+
+.page-subtitle {
+  color: #94a3b8;
+  margin-bottom: 20px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+}
+
+.stat-card {
+  background: #0f172a;
+  border: 1px solid #1e293b;
+  border-radius: 16px;
+  padding: 20px;
+}
+
+.stat-title {
+  color: #94a3b8;
+  font-size: 14px;
+}
+
+.stat-value {
+  margin-top: 10px;
+  font-size: 30px;
+  font-weight: bold;
+}
+
+.chart-card {
+  margin-top: 25px;
+  background: #0f172a;
+  border: 1px solid #1e293b;
+  border-radius: 16px;
+  padding: 20px;
+}
+
+.chart-title {
+  font-size: 22px;
+  margin-bottom: 20px;
+}
+
+.control-panel {
+  margin-top: 20px;
+  display: flex;
+  gap: 12px;
+}
+
+.btn {
+  border: none;
+  padding: 12px 24px;
+  border-radius: 10px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.btn-start {
+  background: #10b981;
+  color: white;
+}
+
+.btn-stop {
+  background: #ef4444;
+  color: white;
+}
+
+.prediction-card {
+  margin-top: 25px;
+  background: #0f172a;
+  border: 1px solid #1e293b;
+  border-radius: 16px;
+  padding: 20px;
+}
+
+.prediction-item {
+  margin-bottom: 12px;
+}
+
+.status-normal {
+  color: #10b981;
+}
+
+.status-afib {
+  color: #ef4444;
+}
+
+.status-waiting {
+  color: #f59e0b;
+}
+/* Dashboard Cards */
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+  margin-top: 25px;
+}
+
+.card {
+  background: #0f172a;
+  border: 1px solid #1e293b;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+}
+
+.card h2,
+.card h3,
+.card p {
+  margin: 0;
+}
+
+.card h2 {
+  margin-top: 10px;
+}
+
+.header {
+  margin-bottom: 25px;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 36px;
+}
+
+.header p {
+  color: #94a3b8;
+  margin-top: 8px;
+}
+
+.actions {
+  margin-top: 25px;
+  display: flex;
+  gap: 15px;
+}
+
+.actions button {
+  border: none;
+  border-radius: 10px;
+  padding: 12px 24px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: 0.2s;
+}
+
+.actions button:hover {
+  opacity: 0.9;
+}
+
+.actions button:first-child {
+  background: #10b981;
+  color: white;
+}
+
+.actions .danger {
+  background: #ef4444;
+  color: white;
+}
+
+table {
+  width: 100%;
+}
+
+th {
+  text-align: left;
+}
+
+td,
+th {
+  padding: 12px;
+}
+
+.chart-card {
+  background: #0f172a;
+  border: 1px solid #1e293b;
+  border-radius: 16px;
+  padding: 20px;
+}
