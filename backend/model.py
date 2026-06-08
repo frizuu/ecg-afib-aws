@@ -21,7 +21,7 @@ MODEL_INFO = {
     "version": "0.1.0",
     "input_length": SEG_LEN,
     "sample_rate": 250,
-    "labels": {"0": "Normal", "1": "AFIB"},
+    "labels": {"0": "NORMAL", "1": "AFIB"},
 }
 
 _model = None
