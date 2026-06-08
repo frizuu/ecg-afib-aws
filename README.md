@@ -3,11 +3,11 @@
 Backend FastAPI untuk deteksi AFIB berbasis ECG yang disiapkan untuk AWS EC2 sesuai arsitektur: model H5 dari S3, prediksi ke DynamoDB, raw signal/report ke S3, notifikasi AFIB ke SNS, dan log aplikasi ke CloudWatch melalui log EC2/container.
 
 ## Struktur utama
-- `backend/app.py` - FastAPI server dengan endpoint `/generate`, `/predict`, `/predict-dummy`, `/latest`, `/history`
+- `backend/app.py` - FastAPI server dengan endpoint `/generate`, `/stream/start`, `/stream/latest`, `/stream/status`, `/stream/stop`, `/predict`, `/predict-stream`, `/predict-dummy`, `/latest`, `/history`
 - `backend/config.py` - konfigurasi runtime dari environment variables AWS
 - `backend/aws_services.py` - integrasi S3 untuk artefak prediksi dan SNS untuk alert AFIB
 - `backend/model.py` - load model H5 dari S3 ke EC2/container sebelum inference
-- `backend/signal.py` - preprocessing sinyal ECG dan generator data dummy
+- `backend/signal_utils.py` - preprocessing sinyal ECG, generator data dummy, dan generator sinyal ECG kontinu
 - `backend/database.py` - penyimpanan hasil prediksi ke DynamoDB
 - `requirements.txt` - paket Python untuk runtime
 - `Dockerfile` - container image untuk menjalankan backend
@@ -27,9 +27,19 @@ Siapkan resource berikut sebelum menjalankan container di EC2:
 ## Endpoint
 - `GET /generate`
   - Menghasilkan data ECG dummy 5 detik. Default `?afib=false` membuat sinyal normal, sedangkan `?afib=true` membuat sinyal AFIB.
+- `POST /stream/start`
+  - Memulai sinyal ECG kontinu di background. Gunakan `?afib=false` untuk normal atau `?afib=true` untuk AFIB.
+- `GET /stream/latest`
+  - Mengambil potongan sinyal terbaru dari buffer stream. Query `?seconds=5` mengambil 5 detik terakhir.
+- `GET /stream/status`
+  - Melihat apakah stream sedang berjalan, jumlah sampel tersedia, dan mode AFIB/normal.
+- `POST /stream/stop`
+  - Menghentikan sinyal ECG kontinu.
 - `POST /predict`
   - Menerima JSON: `{ "signal": [float], "sample_rate": 250, "threshold": 0.5, "metadata": {} }`
   - Menyimpan metadata ke DynamoDB, artefak ke S3, dan mengirim SNS jika label `AFIB`
+- `POST /predict-stream`
+  - Mengambil sinyal terbaru dari stream, menjalankan prediksi, lalu menyimpan hasilnya ke DynamoDB/S3/SNS.
 - `POST /predict-dummy`
   - Membuat data ECG dummy, menjalankan prediksi, lalu menyimpan hasilnya ke DynamoDB/S3. Tambahkan `?afib=true` untuk dummy AFIB.
 - `GET /latest`
@@ -50,6 +60,8 @@ PREDICTION_S3_BUCKET=your-prediction-bucket
 PREDICTION_S3_PREFIX=ecg-predictions
 SNS_TOPIC_ARN=arn:aws:sns:ap-southeast-1:123456789012:ecg-afib-alerts
 SNS_ALERT_ON_LABEL=AFIB
+STREAM_BUFFER_SECONDS=60
+STREAM_CHUNK_SECONDS=0.2
 ```
 
 `MODEL_ALLOW_DUMMY=false` membuat service gagal start jika model H5 tidak tersedia. Gunakan `true` hanya untuk demo sementara.
@@ -69,6 +81,26 @@ docker run -d \
 CloudWatch dapat membaca log dari stdout container melalui CloudWatch Agent atau integrasi log service container yang digunakan.
 
 ## Contoh request
+Mulai stream ECG normal:
+```bash
+curl -X POST "http://EC2_PUBLIC_IP:8000/stream/start?afib=false"
+```
+
+Ambil 5 detik sinyal terbaru untuk digambar frontend:
+```bash
+curl "http://EC2_PUBLIC_IP:8000/stream/latest?seconds=5"
+```
+
+Prediksi dari stream terbaru:
+```bash
+curl -X POST "http://EC2_PUBLIC_IP:8000/predict-stream?seconds=5"
+```
+
+Stop stream:
+```bash
+curl -X POST "http://EC2_PUBLIC_IP:8000/stream/stop"
+```
+
 ```bash
 curl "http://EC2_PUBLIC_IP:8000/generate?afib=true"
 ```

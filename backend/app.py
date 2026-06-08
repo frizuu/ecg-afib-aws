@@ -9,7 +9,7 @@ from backend.aws_services import AwsIntegrationError, publish_afib_alert, upload
 from backend.config import DEFAULT_SAMPLE_RATE, DEFAULT_SIGNAL_DURATION_SEC
 from backend.database import get_latest_prediction, get_prediction_history, save_prediction
 from backend.model import MODEL_INFO, ModelLoadError, get_model, predict_signal
-from backend.signal_utils import generate_dummy_ecg
+from backend.signal_utils import ecg_stream, generate_dummy_ecg
 
 logging.basicConfig(
     level=logging.INFO,
@@ -33,6 +33,45 @@ class PredictRequest(BaseModel):
     metadata: Optional[dict] = None
 
 
+def persist_prediction(
+    result: dict,
+    signal: list[float],
+    source: str,
+    sample_rate: int,
+    metadata: Optional[dict] = None,
+) -> dict:
+    prediction_id = str(uuid4())
+    artifact_uris = upload_prediction_artifacts(
+        prediction_id,
+        signal,
+        result,
+        metadata=metadata,
+    )
+    saved_item = save_prediction(
+        result,
+        source=source,
+        sample_rate=sample_rate,
+        signal_length=len(signal),
+        metadata=metadata,
+        artifact_uris=artifact_uris,
+        prediction_id=prediction_id,
+    )
+    sns_message_id = publish_afib_alert(saved_item)
+    if sns_message_id:
+        saved_item = save_prediction(
+            result,
+            source=source,
+            sample_rate=sample_rate,
+            signal_length=len(signal),
+            metadata=metadata,
+            artifact_uris=artifact_uris,
+            sns_message_id=sns_message_id,
+            prediction_id=saved_item["prediction_id"],
+            created_at=saved_item["created_at"],
+        )
+    return saved_item
+
+
 @app.on_event("startup")
 async def startup_event():
     get_model()
@@ -53,6 +92,28 @@ async def generate(afib: bool = False):
     }
 
 
+@app.post("/stream/start")
+async def stream_start(afib: bool = False):
+    return ecg_stream.start(afib=afib, sample_rate=DEFAULT_SAMPLE_RATE)
+
+
+@app.post("/stream/stop")
+async def stream_stop():
+    return ecg_stream.stop()
+
+
+@app.get("/stream/status")
+async def stream_status():
+    return ecg_stream.status()
+
+
+@app.get("/stream/latest")
+async def stream_latest(seconds: int = DEFAULT_SIGNAL_DURATION_SEC):
+    if seconds < 1 or seconds > 60:
+        raise HTTPException(status_code=400, detail="Seconds harus antara 1 sampai 60")
+    return ecg_stream.latest(seconds=seconds)
+
+
 @app.post("/predict")
 async def predict(request: PredictRequest):
     if len(request.signal) < 100:
@@ -60,35 +121,13 @@ async def predict(request: PredictRequest):
 
     try:
         result = predict_signal(request.signal, request.sample_rate, threshold=request.threshold)
-        prediction_id = str(uuid4())
-        artifact_uris = upload_prediction_artifacts(
-            prediction_id,
-            request.signal,
-            result,
-            metadata=request.metadata,
-        )
-        saved_item = save_prediction(
+        saved_item = persist_prediction(
             result,
             source="request",
             sample_rate=request.sample_rate,
-            signal_length=len(request.signal),
+            signal=request.signal,
             metadata=request.metadata,
-            artifact_uris=artifact_uris,
-            prediction_id=prediction_id,
         )
-        sns_message_id = publish_afib_alert(saved_item)
-        if sns_message_id:
-            saved_item = save_prediction(
-                result,
-                source="request",
-                sample_rate=request.sample_rate,
-                signal_length=len(request.signal),
-                metadata=request.metadata,
-                artifact_uris=artifact_uris,
-                sns_message_id=sns_message_id,
-                prediction_id=saved_item["prediction_id"],
-                created_at=saved_item["created_at"],
-            )
     except ModelLoadError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except AwsIntegrationError as exc:
@@ -111,35 +150,13 @@ async def predict_dummy(afib: bool = False):
         )
         result = predict_signal(sample, metadata["sample_rate"])
         signal = sample.tolist()
-        prediction_id = str(uuid4())
-        artifact_uris = upload_prediction_artifacts(
-            prediction_id,
-            signal,
-            result,
-            metadata=metadata,
-        )
-        saved_item = save_prediction(
+        saved_item = persist_prediction(
             result,
             source="dummy",
             sample_rate=metadata["sample_rate"],
-            signal_length=len(sample),
+            signal=signal,
             metadata=metadata,
-            artifact_uris=artifact_uris,
-            prediction_id=prediction_id,
         )
-        sns_message_id = publish_afib_alert(saved_item)
-        if sns_message_id:
-            saved_item = save_prediction(
-                result,
-                source="dummy",
-                sample_rate=metadata["sample_rate"],
-                signal_length=len(sample),
-                metadata=metadata,
-                artifact_uris=artifact_uris,
-                sns_message_id=sns_message_id,
-                prediction_id=saved_item["prediction_id"],
-                created_at=saved_item["created_at"],
-            )
     except ModelLoadError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except AwsIntegrationError as exc:
@@ -149,6 +166,39 @@ async def predict_dummy(afib: bool = False):
     global last_prediction
     last_prediction = saved_item
     logger.info("Dummy prediction completed", extra={"prediction_id": saved_item["prediction_id"], "label": saved_item["label"]})
+    return saved_item
+
+
+@app.post("/predict-stream")
+async def predict_stream(seconds: int = DEFAULT_SIGNAL_DURATION_SEC, threshold: float = 0.5):
+    if seconds < 1 or seconds > 60:
+        raise HTTPException(status_code=400, detail="Seconds harus antara 1 sampai 60")
+
+    stream_data = ecg_stream.latest(seconds=seconds)
+    signal = stream_data["signal"]
+    metadata = stream_data["metadata"]
+
+    if len(signal) < 100:
+        raise HTTPException(status_code=400, detail="Stream belum memiliki minimal 100 sampel")
+
+    try:
+        result = predict_signal(signal, metadata["sample_rate"], threshold=threshold)
+        saved_item = persist_prediction(
+            result,
+            source="stream",
+            sample_rate=metadata["sample_rate"],
+            signal=signal,
+            metadata=metadata,
+        )
+    except ModelLoadError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except AwsIntegrationError as exc:
+        logger.exception("AWS integration failed during stream prediction")
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    global last_prediction
+    last_prediction = saved_item
+    logger.info("Stream prediction completed", extra={"prediction_id": saved_item["prediction_id"], "label": saved_item["label"]})
     return saved_item
 
 
