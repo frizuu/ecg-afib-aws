@@ -1,7 +1,7 @@
 import {
-  useState,
   useEffect,
   useRef,
+  useState,
 } from "react";
 
 import { Navigate } from "react-router-dom";
@@ -25,6 +25,7 @@ import {
   normalizePrediction,
   startStream,
   stopStream,
+  getStreamStatus,
   predictStream,
 } from "../services/api";
 
@@ -59,18 +60,21 @@ export default function Dashboard() {
   const [isMonitoring, setIsMonitoring] =
     useState(false);
 
+  const [isLoading, setIsLoading] =
+    useState(false);
+
+  const [message, setMessage] =
+    useState("");
+
+  const [error, setError] =
+    useState("");
+
   if (!patientName) {
     return <Navigate to="/" />;
   }
 
-  const loadLatest = async () => {
-    try {
-      const response =
-        await getLatest();
-
-      const prediction =
-        response?.last_prediction;
-
+  const savePredictionToDashboard =
+    (prediction) => {
       if (!prediction) return;
 
       const record =
@@ -79,21 +83,10 @@ export default function Dashboard() {
           patientName
         );
 
-      setStatus(
-        record.status
-      );
-
-      setBpm(
-        record.bpm
-      );
-
-      setRisk(
-        record.risk
-      );
-
-      setLastUpdate(
-        record.timestamp
-      );
+      setStatus(record.status);
+      setBpm(record.bpm);
+      setRisk(record.risk);
+      setLastUpdate(record.timestamp);
 
       if (
         prediction.label ===
@@ -133,6 +126,16 @@ export default function Dashboard() {
       setLastLabel(
         prediction.label
       );
+    };
+
+  const loadLatest = async () => {
+    try {
+      const response =
+        await getLatest();
+
+      savePredictionToDashboard(
+        response?.last_prediction
+      );
     } catch (err) {
       console.error(err);
     }
@@ -156,138 +159,214 @@ export default function Dashboard() {
       );
     };
 
+  const stopSignalPolling =
+    () => {
+      if (intervalRef.current) {
+        clearInterval(
+          intervalRef.current
+        );
+        intervalRef.current = null;
+      }
+    };
+
+  const startSignalPolling =
+    () => {
+      stopSignalPolling();
+
+      intervalRef.current =
+        setInterval(
+          async () => {
+            try {
+              await loadStreamSignal();
+            } catch (err) {
+              console.error(err);
+            }
+          },
+          2000
+        );
+    };
+
   useEffect(() => {
-    loadLatest();
+    const initializeDashboard =
+      async () => {
+        await loadLatest();
+
+        try {
+          const streamStatus =
+            await getStreamStatus();
+
+          setIsMonitoring(
+            Boolean(
+              streamStatus?.running
+            )
+          );
+
+          if (streamStatus?.running) {
+            startSignalPolling();
+            await loadStreamSignal();
+          }
+        } catch (err) {
+          console.error(err);
+        }
+      };
+
+    initializeDashboard();
   }, []);
 
   useEffect(() => {
     return () => {
-      if (
-        intervalRef.current
-      ) {
-        clearInterval(
-          intervalRef.current
-        );
-      }
+      stopSignalPolling();
     };
   }, []);
 
   const handleStart =
     async () => {
-      try {
-        if (
-          intervalRef.current
-        ) {
-          clearInterval(
-            intervalRef.current
-          );
-        }
+      setIsLoading(true);
+      setError("");
+      setMessage("");
 
-        await startStream();
+      try {
+        await startStream(false);
 
         setIsMonitoring(true);
+        setMessage(
+          "Stream ECG berhasil dimulai."
+        );
 
-        intervalRef.current =
-          setInterval(
-            async () => {
-              try {
-                await predictStream();
-
-                await loadLatest();
-                await loadStreamSignal();
-              } catch (err) {
-                console.error(
-                  err
-                );
-              }
-            },
-            10000
-          );
+        startSignalPolling();
+        await loadStreamSignal();
       } catch (err) {
         console.error(err);
+        setError(
+          err.message ||
+            "Gagal memulai stream."
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+  const handlePredict =
+    async () => {
+      setIsLoading(true);
+      setError("");
+      setMessage("");
+
+      try {
+        const prediction =
+          await predictStream();
+
+        savePredictionToDashboard(
+          prediction
+        );
+        await loadStreamSignal();
+
+        setMessage(
+          `Prediksi selesai: ${prediction.label}`
+        );
+      } catch (err) {
+        console.error(err);
+        setError(
+          err.message ||
+            "Gagal menjalankan prediksi."
+        );
+      } finally {
+        setIsLoading(false);
       }
     };
 
   const handleStop =
     async () => {
+      setIsLoading(true);
+      setError("");
+      setMessage("");
+
       try {
         await stopStream();
 
-        if (
-          intervalRef.current
-        ) {
-          clearInterval(
-            intervalRef.current
-          );
-        }
-
+        stopSignalPolling();
         setIsMonitoring(false);
+        setMessage(
+          "Stream ECG berhasil dihentikan."
+        );
       } catch (err) {
         console.error(err);
+        setError(
+          err.message ||
+            "Gagal menghentikan stream."
+        );
+      } finally {
+        setIsLoading(false);
       }
     };
 
   return (
-    <div
-      style={{
-        display: "flex",
-        minHeight: "100vh",
-        background:
-          "#031235",
-        color: "white",
-      }}
-    >
+    <div className="dashboard-container">
       <Sidebar />
 
-      <div
-        style={{
-          flex: 1,
-          padding: "30px",
-        }}
-      >
+      <main className="main-content">
         <div className="header">
           <h1>
             AFIB Detection Dashboard
           </h1>
 
           <p>
-            Welcome,{" "}
-            {patientName}
+            Welcome, {patientName}
           </p>
         </div>
 
+        <section className="primary-actions">
+          <button
+            className="action-button action-start"
+            disabled={
+              isLoading ||
+              isMonitoring
+            }
+            onClick={handleStart}
+          >
+            Stream Start
+          </button>
+
+          <button
+            className="action-button action-predict"
+            disabled={
+              isLoading ||
+              !isMonitoring
+            }
+            onClick={handlePredict}
+          >
+            Predict AFIB / Normal
+          </button>
+
+          <button
+            className="action-button action-stop"
+            disabled={
+              isLoading ||
+              !isMonitoring
+            }
+            onClick={handleStop}
+          >
+            Stream Stop
+          </button>
+        </section>
+
+        {(message || error) && (
+          <div
+            className={
+              error
+                ? "status-banner status-banner-error"
+                : "status-banner"
+            }
+          >
+            {error || message}
+          </div>
+        )}
+
         <div className="cards">
           <div className="card">
-            <h3>Status</h3>
-            <h2>{status}</h2>
-          </div>
-
-          <div className="card">
-            <h3>Heart Rate</h3>
-            <h2>
-              {bpm} BPM
-            </h2>
-          </div>
-
-          <div className="card">
-            <h3>AFIB Risk</h3>
-            <h2>{risk}%</h2>
-          </div>
-
-          <div className="card">
-            <h3>Alerts</h3>
-            <h2>{alerts}</h2>
-          </div>
-
-          <div className="card">
-            <h3>Patient</h3>
-            <h2>
-              {patientName}
-            </h2>
-          </div>
-
-          <div className="card">
-            <h3>Monitoring</h3>
+            <h3>
+              Stream Status
+            </h3>
             <h2>
               {isMonitoring
                 ? "ACTIVE"
@@ -297,34 +376,53 @@ export default function Dashboard() {
 
           <div className="card">
             <h3>
+              Prediction
+            </h3>
+            <h2>{status}</h2>
+          </div>
+
+          <div className="card">
+            <h3>
+              AFIB Risk
+            </h3>
+            <h2>{risk}%</h2>
+          </div>
+
+          <div className="card">
+            <h3>
+              Heart Rate
+            </h3>
+            <h2>
+              {bpm} BPM
+            </h2>
+          </div>
+
+          <div className="card">
+            <h3>Alerts</h3>
+            <h2>{alerts}</h2>
+          </div>
+
+          <div className="card">
+            <h3>
               Last Update
             </h3>
 
-            <h2
-              style={{
-                fontSize:
-                  "16px",
-              }}
-            >
-              {
-                lastUpdate
-              }
+            <h2 className="small-value">
+              {lastUpdate}
             </h2>
           </div>
         </div>
 
         <div className="chart-card">
           <h2>
-            Live ECG Monitoring
+            Live ECG Stream
           </h2>
 
           <ResponsiveContainer
             width="100%"
             height={350}
           >
-            <LineChart
-              data={ecgData}
-            >
+            <LineChart data={ecgData}>
               <XAxis
                 dataKey="time"
                 hide
@@ -344,70 +442,7 @@ export default function Dashboard() {
             </LineChart>
           </ResponsiveContainer>
         </div>
-
-        <div
-          className="card"
-          style={{
-            marginTop:
-              "25px",
-          }}
-        >
-          <h2>
-            Prediction Result
-          </h2>
-
-          <p>
-            Current Status:
-            {" "}
-            {status}
-          </p>
-
-          <p>
-            Heart Rate:
-            {" "}
-            {bpm} BPM
-          </p>
-
-          <p>
-            AFIB Risk:
-            {" "}
-            {risk}%
-          </p>
-
-          <p>
-            Last Update:
-            {" "}
-            {lastUpdate}
-          </p>
-
-          <p>
-            Monitoring:
-            {" "}
-            {isMonitoring
-              ? "ACTIVE"
-              : "STOPPED"}
-          </p>
-        </div>
-
-        <div className="actions">
-          <button
-            onClick={
-              handleStart
-            }
-          >
-            Start Monitoring
-          </button>
-
-          <button
-            className="danger"
-            onClick={
-              handleStop
-            }
-          >
-            Stop Monitoring
-          </button>
-        </div>
-      </div>
+      </main>
     </div>
   );
 }

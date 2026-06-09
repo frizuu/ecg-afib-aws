@@ -8,8 +8,20 @@ async function handleResponse(
   res
 ) {
   if (!res.ok) {
+    let message = `HTTP Error: ${res.status}`;
+
+    try {
+      const payload = await res.json();
+      message =
+        payload?.detail ||
+        payload?.message ||
+        message;
+    } catch {
+      // Keep the generic HTTP message when the API returns no JSON body.
+    }
+
     throw new Error(
-      `HTTP Error: ${res.status}`
+      message
     );
   }
 
@@ -76,6 +88,14 @@ export async function stopStream() {
     {
       method: "POST",
     }
+  );
+
+  return handleResponse(res);
+}
+
+export async function getStreamStatus() {
+  const res = await fetch(
+    `${API_URL}/stream/status`
   );
 
   return handleResponse(res);
