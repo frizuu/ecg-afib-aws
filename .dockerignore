@@ -4,8 +4,11 @@ __pycache__/
 *.h5
 *.tflite
 venv/
-.env
+.env*
+!.env.aws.example
 .envrc
+.git/
+Frontend/
 
 # Optional local dataset and model directories
 Models/

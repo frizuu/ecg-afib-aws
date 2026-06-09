@@ -11,6 +11,9 @@ Backend FastAPI untuk deteksi AFIB berbasis ECG yang disiapkan untuk AWS EC2 ses
 - `backend/database.py` - penyimpanan hasil prediksi ke DynamoDB
 - `requirements.txt` - paket Python untuk runtime
 - `Dockerfile` - container image untuk menjalankan backend
+- `Frontend/Dockerfile` - container image untuk build dan serve frontend React dengan Nginx
+- `Frontend/nginx.conf` - konfigurasi Nginx untuk frontend dan reverse proxy `/api` ke backend
+- `docker-compose.yml` - menjalankan backend dan frontend sebagai satu stack Docker
 - `.env.aws.example` - contoh environment AWS
 - `aws-iam-policy.example.json` - contoh IAM policy minimal untuk EC2 role
 
@@ -66,7 +69,48 @@ STREAM_CHUNK_SECONDS=0.2
 
 `MODEL_ALLOW_DUMMY=false` membuat service gagal start jika model H5 tidak tersedia. Gunakan `true` hanya untuk demo sementara.
 
-## Jalankan di EC2 dengan Docker
+## Jalankan full stack dengan Docker Compose
+
+Siapkan file environment backend dari contoh:
+
+```bash
+cp .env.aws.example .env.aws
+nano .env.aws
+```
+
+Untuk mode Docker Compose, frontend akan diakses dari port `80` dan request API akan lewat path `/api`, lalu Nginx meneruskannya ke container backend. Jadi frontend tidak perlu memakai Public IP EC2 langsung di `VITE_API_URL`.
+
+Jalankan:
+
+```bash
+docker compose up -d --build
+```
+
+Akses aplikasi:
+
+```bash
+http://EC2_PUBLIC_IP
+```
+
+Backend juga tetap terbuka langsung untuk testing:
+
+```bash
+http://EC2_PUBLIC_IP:8000
+```
+
+Lihat log:
+
+```bash
+docker compose logs -f
+```
+
+Stop stack:
+
+```bash
+docker compose down
+```
+
+## Jalankan backend saja di EC2 dengan Docker
 
 ```bash
 docker build -t ecg-afib-backend .
