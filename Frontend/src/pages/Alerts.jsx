@@ -2,6 +2,10 @@ import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 
 import Sidebar from "../components/Sidebar";
+import {
+  getHistory,
+  normalizePrediction,
+} from "../services/api";
 
 export default function Alerts() {
   const patientName =
@@ -14,13 +18,31 @@ export default function Alerts() {
     return <Navigate to="/" />;
   }
 
-  const loadAlerts = () => {
-    const history =
-      JSON.parse(
-        localStorage.getItem(
-          "history"
-        ) || "[]"
-      );
+  const loadAlerts = async () => {
+    let history = [];
+
+    try {
+      const response =
+        await getHistory();
+
+      history =
+        (response?.items || []).map(
+          (item) =>
+            normalizePrediction(
+              item,
+              patientName
+            )
+        );
+    } catch (err) {
+      console.error(err);
+
+      history =
+        JSON.parse(
+          localStorage.getItem(
+            "history"
+          ) || "[]"
+        );
+    }
 
     const filteredAlerts =
       history.filter((item) => {

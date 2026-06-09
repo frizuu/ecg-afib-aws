@@ -3,10 +3,11 @@ from typing import List, Optional
 from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from backend.aws_services import AwsIntegrationError, publish_afib_alert, upload_prediction_artifacts
-from backend.config import DEFAULT_SAMPLE_RATE, DEFAULT_SIGNAL_DURATION_SEC
+from backend.config import CORS_ALLOWED_ORIGINS, DEFAULT_SAMPLE_RATE, DEFAULT_SIGNAL_DURATION_SEC
 from backend.database import get_latest_prediction, get_prediction_history, save_prediction
 from backend.model import MODEL_INFO, ModelLoadError, get_model, predict_signal
 from backend.signal_utils import ecg_stream, generate_dummy_ecg
@@ -21,6 +22,13 @@ app = FastAPI(
     title="ECG AFIB Detection Backend",
     description="Backend AWS untuk deteksi aritmia ECG dengan FastAPI, EC2, S3, DynamoDB, SNS, dan CloudWatch.",
     version=MODEL_INFO["version"],
+)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=CORS_ALLOWED_ORIGINS,
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 last_prediction: Optional[dict] = None

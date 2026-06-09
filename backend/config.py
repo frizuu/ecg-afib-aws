@@ -27,3 +27,11 @@ DEFAULT_SAMPLE_RATE = int(os.getenv("DEFAULT_SAMPLE_RATE", "250"))
 DEFAULT_SIGNAL_DURATION_SEC = int(os.getenv("DEFAULT_SIGNAL_DURATION_SEC", "5"))
 STREAM_BUFFER_SECONDS = int(os.getenv("STREAM_BUFFER_SECONDS", "60"))
 STREAM_CHUNK_SECONDS = float(os.getenv("STREAM_CHUNK_SECONDS", "0.2"))
+CORS_ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv(
+        "CORS_ALLOWED_ORIGINS",
+        "http://localhost:5173,http://127.0.0.1:5173",
+    ).split(",")
+    if origin.strip()
+]

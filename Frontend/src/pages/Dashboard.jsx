@@ -21,6 +21,8 @@ import Sidebar from "../components/Sidebar";
 
 import {
   getLatest,
+  getStreamLatest,
+  normalizePrediction,
   startStream,
   stopStream,
   predictStream,
@@ -71,26 +73,26 @@ export default function Dashboard() {
 
       if (!prediction) return;
 
+      const record =
+        normalizePrediction(
+          prediction,
+          patientName
+        );
+
       setStatus(
-        prediction.label ||
-          "Unknown"
+        record.status
       );
 
       setBpm(
-        prediction.bpm || "--"
+        record.bpm
       );
 
       setRisk(
-        prediction.probability
-          ? (
-              prediction.probability *
-              100
-            ).toFixed(1)
-          : "--"
+        record.risk
       );
 
       setLastUpdate(
-        prediction.created_at || "-"
+        record.timestamp
       );
 
       if (
@@ -116,30 +118,9 @@ export default function Dashboard() {
       if (
         !latestRecord ||
         latestRecord.timestamp !==
-          prediction.created_at
+          record.timestamp
       ) {
-        history.unshift({
-          patient:
-            patientName,
-
-          status:
-            prediction.label,
-
-          bpm:
-            prediction.bpm,
-
-          risk:
-            prediction.probability
-              ? (
-                  prediction.probability *
-                  100
-                ).toFixed(1)
-              : 0,
-
-          timestamp:
-            prediction.created_at ||
-            new Date().toLocaleString(),
-        });
+        history.unshift(record);
 
         localStorage.setItem(
           "history",
@@ -156,6 +137,24 @@ export default function Dashboard() {
       console.error(err);
     }
   };
+
+  const loadStreamSignal =
+    async () => {
+      const response =
+        await getStreamLatest(5);
+
+      const signal =
+        response?.signal || [];
+
+      setEcgData(
+        signal.map(
+          (value, index) => ({
+            time: index,
+            value,
+          })
+        )
+      );
+    };
 
   useEffect(() => {
     loadLatest();
@@ -195,27 +194,7 @@ export default function Dashboard() {
                 await predictStream();
 
                 await loadLatest();
-
-                setEcgData(
-                  (prev) => {
-                    const next =
-                      [
-                        ...prev,
-                        {
-                          time:
-                            new Date().toLocaleTimeString(),
-                          value:
-                            Math.random() *
-                              2 -
-                            1,
-                        },
-                      ];
-
-                    return next.slice(
-                      -100
-                    );
-                  }
-                );
+                await loadStreamSignal();
               } catch (err) {
                 console.error(
                   err

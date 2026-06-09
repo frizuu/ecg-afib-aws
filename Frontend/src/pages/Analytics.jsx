@@ -14,6 +14,10 @@ import {
 } from "recharts";
 
 import Sidebar from "../components/Sidebar";
+import {
+  getHistory,
+  normalizePrediction,
+} from "../services/api";
 
 export default function Analytics() {
   const patientName =
@@ -28,17 +32,38 @@ export default function Analytics() {
 
   useEffect(() => {
     const loadAnalytics =
-      () => {
-        const history =
-          JSON.parse(
-            localStorage.getItem(
-              "history"
-            ) || "[]"
-          );
+      async () => {
+        try {
+          const response =
+            await getHistory();
 
-        setHistoryData(
-          history.reverse()
-        );
+          const items =
+            response?.items || [];
+
+          setHistoryData(
+            items
+              .map((item) =>
+                normalizePrediction(
+                  item,
+                  patientName
+                )
+              )
+              .reverse()
+          );
+        } catch (err) {
+          console.error(err);
+
+          const history =
+            JSON.parse(
+              localStorage.getItem(
+                "history"
+              ) || "[]"
+            );
+
+          setHistoryData(
+            [...history].reverse()
+          );
+        }
       };
 
     loadAnalytics();
