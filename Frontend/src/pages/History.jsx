@@ -78,7 +78,7 @@ export default function History() {
         }}
       >
         <h1>
-          Monitoring History
+          Prediction History
         </h1>
 
         <p>
@@ -171,7 +171,7 @@ export default function History() {
                         "30px",
                     }}
                   >
-                    No monitoring
+                    No prediction
                     history available
                   </td>
                 </tr>

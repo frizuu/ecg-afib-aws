@@ -29,6 +29,10 @@ import {
   predictStream,
 } from "../services/api";
 
+const STREAM_WINDOW_SECONDS = 5;
+const PREDICTION_THRESHOLD = 0.55;
+const MIN_PREDICTION_SAMPLES = 100;
+
 export default function Dashboard() {
   const patientName =
     localStorage.getItem("patientName");
@@ -57,8 +61,11 @@ export default function Dashboard() {
   const [lastUpdate, setLastUpdate] =
     useState("-");
 
-  const [isMonitoring, setIsMonitoring] =
+  const [isStreaming, setIsStreaming] =
     useState(false);
+
+  const [streamSamples, setStreamSamples] =
+    useState(0);
 
   const [isLoading, setIsLoading] =
     useState(false);
@@ -144,11 +151,21 @@ export default function Dashboard() {
   const loadStreamSignal =
     async () => {
       const response =
-        await getStreamLatest(5);
+        await getStreamLatest(
+          STREAM_WINDOW_SECONDS
+        );
 
       const signal =
         response?.signal || [];
 
+      setIsStreaming(
+        Boolean(response?.running)
+      );
+      setStreamSamples(
+        response?.metadata
+          ?.available_samples ||
+          signal.length
+      );
       setEcgData(
         signal.map(
           (value, index) => ({
@@ -195,10 +212,14 @@ export default function Dashboard() {
           const streamStatus =
             await getStreamStatus();
 
-          setIsMonitoring(
+          setIsStreaming(
             Boolean(
               streamStatus?.running
             )
+          );
+          setStreamSamples(
+            streamStatus?.buffered_samples ||
+              0
           );
 
           if (streamStatus?.running) {
@@ -228,9 +249,9 @@ export default function Dashboard() {
       try {
         await startStream(false);
 
-        setIsMonitoring(true);
+        setIsStreaming(true);
         setMessage(
-          "Stream ECG berhasil dimulai."
+          "Stream ECG dimulai. Data sedang digenerate."
         );
 
         startSignalPolling();
@@ -254,7 +275,10 @@ export default function Dashboard() {
 
       try {
         const prediction =
-          await predictStream();
+          await predictStream(
+            STREAM_WINDOW_SECONDS,
+            PREDICTION_THRESHOLD
+          );
 
         savePredictionToDashboard(
           prediction
@@ -262,7 +286,7 @@ export default function Dashboard() {
         await loadStreamSignal();
 
         setMessage(
-          `Prediksi selesai: ${prediction.label}`
+          `Prediksi ${STREAM_WINDOW_SECONDS} detik terakhir selesai: ${prediction.label}`
         );
       } catch (err) {
         console.error(err);
@@ -285,9 +309,9 @@ export default function Dashboard() {
         await stopStream();
 
         stopSignalPolling();
-        setIsMonitoring(false);
+        setIsStreaming(false);
         setMessage(
-          "Stream ECG berhasil dihentikan."
+          "Stream ECG dihentikan. Generate data berhenti."
         );
       } catch (err) {
         console.error(err);
@@ -320,35 +344,60 @@ export default function Dashboard() {
             className="action-button action-start"
             disabled={
               isLoading ||
-              isMonitoring
+              isStreaming
             }
             onClick={handleStart}
           >
-            Stream Start
+            Start Stream
           </button>
 
           <button
             className="action-button action-predict"
             disabled={
               isLoading ||
-              !isMonitoring
+              !isStreaming ||
+              streamSamples <
+                MIN_PREDICTION_SAMPLES
             }
             onClick={handlePredict}
           >
-            Predict AFIB / Normal
+            Predict
           </button>
 
           <button
             className="action-button action-stop"
             disabled={
               isLoading ||
-              !isMonitoring
+              !isStreaming
             }
             onClick={handleStop}
           >
-            Stream Stop
+            Stop Stream
           </button>
         </section>
+
+        <div className="stream-config">
+          <span>
+            Prediction window:{" "}
+            <strong>
+              {STREAM_WINDOW_SECONDS}s
+            </strong>
+          </span>
+
+          <span>
+            Threshold:{" "}
+            <strong>
+              {PREDICTION_THRESHOLD}
+            </strong>
+          </span>
+
+          <span>
+            Samples ready:{" "}
+            <strong>
+              {streamSamples}
+            </strong>
+          </span>
+        </div>
 
         {(message || error) && (
           <div
@@ -368,8 +417,8 @@ export default function Dashboard() {
               Stream Status
             </h3>
             <h2>
-              {isMonitoring
-                ? "ACTIVE"
+              {isStreaming
+                ? "GENERATING"
                 : "STOPPED"}
             </h2>
           </div>

@@ -220,6 +220,27 @@ body {
   background: #ef4444;
 }
 
+.stream-config {
+  align-items: center;
+  color: #cbd5e1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.stream-config span {
+  background: #0f172a;
+  border: 1px solid #1e293b;
+  border-radius: 8px;
+  font-size: 14px;
+  padding: 8px 10px;
+}
+
+.stream-config strong {
+  color: #f8fafc;
+}
+
 .status-banner {
   background: #063f32;
   border: 1px solid #10b981;

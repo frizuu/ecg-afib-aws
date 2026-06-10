@@ -111,9 +111,17 @@ export async function getStreamLatest(
   return handleResponse(res);
 }
 
-export async function predictStream() {
+export async function predictStream(
+  seconds = 5,
+  threshold = 0.55
+) {
+  const params = new URLSearchParams({
+    seconds: String(seconds),
+    threshold: String(threshold),
+  });
+
   const res = await fetch(
-    `${API_URL}/predict-stream?seconds=5&threshold=0.5`,
+    `${API_URL}/predict-stream?${params.toString()}`,
     {
       method: "POST",
     }

@@ -3,7 +3,7 @@ import { useState } from "react";
 export default function Login() {
   const [name, setName] = useState("");
 
-  const startMonitoring = () => {
+  const openDashboard = () => {
     if (!name) {
       alert("Masukkan nama pasien");
       return;
@@ -32,10 +32,10 @@ export default function Login() {
           width: 450,
         }}
       >
-        <h1>❤️ Smart ECG Monitoring</h1>
+        <h1>Smart ECG Stream</h1>
 
         <p style={{ marginTop: 10 }}>
-          Masukkan nama pasien untuk memulai monitoring
+          Masukkan nama pasien untuk membuka dashboard stream ECG
         </p>
 
         <input
@@ -51,14 +51,14 @@ export default function Login() {
         />
 
         <button
-          onClick={startMonitoring}
+          onClick={openDashboard}
           style={{
             width: "100%",
             marginTop: 20,
             padding: 12,
           }}
         >
-          Start Monitoring
+          Open Dashboard
         </button>
       </div>
     </div>
