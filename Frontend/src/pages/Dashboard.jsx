@@ -32,6 +32,16 @@ import {
 const STREAM_WINDOW_SECONDS = 5;
 const PREDICTION_THRESHOLD = 0.55;
 const MIN_PREDICTION_SAMPLES = 100;
+const STREAM_USE_CASES = {
+  normal: {
+    label: "Normal",
+    afib: false,
+  },
+  afib: {
+    label: "AFIB",
+    afib: true,
+  },
+};
 
 export default function Dashboard() {
   const patientName =
@@ -66,6 +76,12 @@ export default function Dashboard() {
 
   const [streamSamples, setStreamSamples] =
     useState(0);
+
+  const [selectedUseCase, setSelectedUseCase] =
+    useState("normal");
+
+  const [activeUseCase, setActiveUseCase] =
+    useState("normal");
 
   const [isLoading, setIsLoading] =
     useState(false);
@@ -166,6 +182,18 @@ export default function Dashboard() {
           ?.available_samples ||
           signal.length
       );
+      const streamUseCase =
+        response?.metadata?.afib
+          ? "afib"
+          : "normal";
+
+      setActiveUseCase(streamUseCase);
+
+      if (response?.running) {
+        setSelectedUseCase(
+          streamUseCase
+        );
+      }
       setEcgData(
         signal.map(
           (value, index) => ({
@@ -221,8 +249,19 @@ export default function Dashboard() {
             streamStatus?.buffered_samples ||
               0
           );
+          const streamUseCase =
+            streamStatus?.afib
+              ? "afib"
+              : "normal";
+
+          setActiveUseCase(
+            streamUseCase
+          );
 
           if (streamStatus?.running) {
+            setSelectedUseCase(
+              streamUseCase
+            );
             startSignalPolling();
             await loadStreamSignal();
           }
@@ -247,11 +286,21 @@ export default function Dashboard() {
       setMessage("");
 
       try {
-        await startStream(false);
+        const useCase =
+          STREAM_USE_CASES[
+            selectedUseCase
+          ];
+
+        await startStream(useCase.afib);
 
         setIsStreaming(true);
+        setActiveUseCase(
+          selectedUseCase
+        );
+        setStreamSamples(0);
+        setEcgData([]);
         setMessage(
-          "Stream ECG dimulai. Data sedang digenerate."
+          `Stream ECG ${useCase.label} dimulai. Data sedang digenerate.`
         );
 
         startSignalPolling();
@@ -339,6 +388,60 @@ export default function Dashboard() {
           </p>
         </div>
 
+        <section className="stream-use-case">
+          <div>
+            <h2>
+              Generate Data Use Case
+            </h2>
+
+            <p>
+              Pilih jenis data ECG yang akan digenerate saat stream dimulai.
+            </p>
+          </div>
+
+          <div
+            className="use-case-toggle"
+            role="group"
+            aria-label="Generate data use case"
+          >
+            <button
+              className={
+                selectedUseCase ===
+                "normal"
+                  ? "use-case-option is-selected"
+                  : "use-case-option"
+              }
+              disabled={isStreaming}
+              onClick={() =>
+                setSelectedUseCase(
+                  "normal"
+                )
+              }
+              type="button"
+            >
+              Normal
+            </button>
+
+            <button
+              className={
+                selectedUseCase ===
+                "afib"
+                  ? "use-case-option is-selected"
+                  : "use-case-option"
+              }
+              disabled={isStreaming}
+              onClick={() =>
+                setSelectedUseCase(
+                  "afib"
+                )
+              }
+              type="button"
+            >
+              AFIB
+            </button>
+          </div>
+        </section>
+
         <section className="primary-actions">
           <button
             className="action-button action-start"
@@ -377,6 +480,17 @@ export default function Dashboard() {
         </section>
 
         <div className="stream-config">
+          <span>
+            Active use case:{" "}
+            <strong>
+              {
+                STREAM_USE_CASES[
+                  activeUseCase
+                ].label
+              }
+            </strong>
+          </span>
+
           <span>
             Prediction window:{" "}
             <strong>
