@@ -348,6 +348,18 @@ export default function Dashboard() {
       }
     };
 
+  const handleClear = () => {
+    setError("");
+    setMessage("Dashboard dikosongkan dari deteksi/generate sebelumnya.");
+    setStatus("Waiting");
+    setBpm("--");
+    setRisk("--");
+    setLastUpdate("-");
+    setLastLabel("");
+    setEcgData([]);
+    setStreamSamples(0);
+  };
+
   const handleStop =
     async () => {
       setIsLoading(true);
@@ -476,6 +488,15 @@ export default function Dashboard() {
             onClick={handleStop}
           >
             Stop Stream
+          </button>
+
+          <button
+            className="action-button action-clear"
+            disabled={isLoading}
+            onClick={handleClear}
+            type="button"
+          >
+            Clear Dashboard
           </button>
         </section>
 
