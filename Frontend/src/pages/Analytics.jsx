@@ -93,33 +93,25 @@ export default function Analytics() {
         "Normal"
     ).length;
 
+  const bpmValues = historyData
+    .map((item) => Number(item.bpm))
+    .filter(
+      (value) => !Number.isNaN(value) && value > 0
+    );
+
   const averageBPM =
-    totalRecords > 0
+    bpmValues.length > 0
       ? Math.round(
-          historyData.reduce(
-            (
-              sum,
-              item
-            ) =>
-              sum +
-              Number(
-                item.bpm || 0
-              ),
+          bpmValues.reduce(
+            (sum, value) => sum + value,
             0
-          ) / totalRecords
+          ) / bpmValues.length
         )
       : 0;
 
   const highestBPM =
-    totalRecords > 0
-      ? Math.max(
-          ...historyData.map(
-            (item) =>
-              Number(
-                item.bpm || 0
-              )
-          )
-        )
+    bpmValues.length > 0
+      ? Math.max(...bpmValues)
       : 0;
 
   const pieData = [
