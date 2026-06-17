@@ -596,11 +596,12 @@ export default function Dashboard() {
               <Tooltip />
 
               <Line
-                type="monotone"
+                type="linear"
                 dataKey="value"
                 stroke="#00ff88"
                 dot={false}
                 strokeWidth={2}
+                isAnimationActive={false}
               />
             </LineChart>
           </ResponsiveContainer>

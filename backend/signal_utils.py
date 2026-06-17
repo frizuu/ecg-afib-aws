@@ -192,8 +192,8 @@ class EcgSignalStream:
         self._sample_index = 0
         self._afib = False
         self._started_at: Optional[str] = None
-        self._beat_index = 0  # Track which beat we're on
         self._next_beat_time = 0.8  # Time of next beat (updated dynamically)
+        self._beat_elapsed = 0.0
 
     def start(self, afib: bool = False, sample_rate: int = DEFAULT_SAMPLE_RATE) -> dict:
         with self._lock:
@@ -204,7 +204,7 @@ class EcgSignalStream:
             self._buffer = deque(maxlen=sample_rate * STREAM_BUFFER_SECONDS)
             self._sample_index = 0
             self._afib = afib
-            self._beat_index = 0
+            self._beat_elapsed = 0.0
             # Initialize first beat duration (0.8s for ~75 bpm normal, variable for AFIB)
             if afib:
                 self._next_beat_time = np.random.uniform(0.4, 1.0)
@@ -269,83 +269,70 @@ class EcgSignalStream:
         """
         signal = np.zeros(chunk_size, dtype=np.float32)
         current_sample = 0
-        
+
         while current_sample < chunk_size:
-            # Current time in seconds
-            current_time = self._sample_index / self._sample_rate
-            beat_start_time = current_time - (current_time % self._next_beat_time) if self._beat_index == 0 else current_time
-            
-            # Time within current beat (0 to beat_duration)
-            time_in_beat = current_time - (self._beat_index * self._next_beat_time + sum([0] if self._beat_index == 0 else [0]))
-            
-            # For simplicity: calculate beat start for current chunk
-            samples_in_beat = max(1, int(self._next_beat_time * self._sample_rate))
-            beat_sample_index = int((current_time % self._next_beat_time) * self._sample_rate)
-            
-            # Generate samples for this beat until end of beat or chunk
-            samples_to_generate = min(samples_in_beat - beat_sample_index, chunk_size - current_sample)
-            
-            if samples_to_generate > 0:
-                # Time array for these samples
-                idx = np.arange(self._sample_index, self._sample_index + samples_to_generate)
-                time_array = idx / self._sample_rate
-                
-                # Get time within the beat cycle (0 to 1)
-                beat_time = (time_array % self._next_beat_time)
-                
-                # Morphology variation for AFIB
-                morphology_var = 1.0
+            beat_seconds_left = self._next_beat_time - self._beat_elapsed
+            if beat_seconds_left <= 1e-6:
+                self._beat_elapsed = 0.0
                 if self._afib:
-                    morphology_var = np.random.uniform(0.7, 1.3)
-                
-                # Generate P wave
-                p_wave_phase = (beat_time - 0.15) / 0.08
-                p_wave = 0.15 * np.sin(np.pi * np.clip(p_wave_phase, 0, 1)) * np.exp(-((beat_time - 0.2) ** 2) / 0.004)
-                
-                # Generate QRS complex
-                qrs_phase = (beat_time - 0.35) / 0.12
-                qrs = 0.8 * morphology_var * np.sin(np.pi * np.clip(qrs_phase, 0, 1)) * np.exp(-((beat_time - 0.45) ** 2) / 0.003)
-                
-                # Q wave
-                q_wave = -0.15 * np.sin(2 * np.pi * (beat_time - 0.4)) * np.exp(-((beat_time - 0.40) ** 2) / 0.0015)
-                
-                # S wave
-                s_wave = -0.12 * np.sin(2 * np.pi * (beat_time - 0.5)) * np.exp(-((beat_time - 0.52) ** 2) / 0.0015)
-                
-                # Generate T wave
-                t_wave_phase = (beat_time - 0.65) / 0.1
-                t_wave = 0.25 * np.sin(np.pi * np.clip(t_wave_phase, 0, 1)) * np.exp(-((beat_time - 0.75) ** 2) / 0.008)
-                
-                # Baseline variation
-                baseline = 0.02 * np.sin(2.0 * np.pi * 0.5 * beat_time)
-                
-                # Add AFIB fibrillation if needed
-                if self._afib:
-                    fibrillation = 0.15 * np.sin(2.0 * np.pi * 5.5 * time_array + np.random.uniform(0, 2*np.pi)) * (0.5 + 0.5 * np.sin(2.0 * np.pi * 0.3 * time_array))
-                    noise = np.random.normal(0.0, 0.04, samples_to_generate)
+                    self._next_beat_time = np.random.uniform(0.4, 1.0)
                 else:
-                    fibrillation = 0
-                    noise = np.random.normal(0.0, 0.025, samples_to_generate)
-                
-                # Combine all components
-                beat_signal = p_wave + qrs + q_wave + s_wave + t_wave + baseline + fibrillation + noise
-                signal[current_sample:current_sample + samples_to_generate] = beat_signal.astype(np.float32)
-                
-                self._sample_index += samples_to_generate
-                current_sample += samples_to_generate
-                
-                # Check if beat is complete, prepare next beat
-                if beat_sample_index + samples_to_generate >= samples_in_beat:
-                    self._beat_index += 1
-                    if self._afib:
-                        # Random RR interval for AFIB
-                        self._next_beat_time = np.random.uniform(0.4, 1.0)
-                    else:
-                        # Regular interval for normal sinus
-                        self._next_beat_time = 0.8
+                    self._next_beat_time = 0.8
+                beat_seconds_left = self._next_beat_time
+
+            samples_to_generate = min(
+                int(np.ceil(beat_seconds_left * self._sample_rate)),
+                chunk_size - current_sample,
+            )
+
+            idx = np.arange(samples_to_generate)
+            idx_global = np.arange(self._sample_index, self._sample_index + samples_to_generate)
+            time_array = idx_global / self._sample_rate
+            beat_time = self._beat_elapsed + idx / self._sample_rate
+
+            morphology_var = 1.0
+            if self._afib:
+                morphology_var = np.random.uniform(0.7, 1.3)
+
+            p_wave = 0.12 * np.exp(-((beat_time - 0.12) / 0.025) ** 2)
+            q_wave = -0.20 * np.exp(-((beat_time - 0.38) / 0.010) ** 2)
+            r_wave = 1.0 * morphology_var * np.exp(-((beat_time - 0.45) / 0.008) ** 2)
+            s_wave = -0.25 * np.exp(-((beat_time - 0.52) / 0.012) ** 2)
+            t_wave = 0.30 * np.exp(-((beat_time - 0.70) / 0.030) ** 2)
+            baseline = 0.02 * np.sin(2.0 * np.pi * 0.15 * time_array)
+
+            if self._afib:
+                fibrillation = 0.15 * np.sin(2.0 * np.pi * 5.5 * time_array + np.random.uniform(0, 2*np.pi)) * (
+                    0.5 + 0.5 * np.sin(2.0 * np.pi * 0.3 * time_array)
+                )
+                noise = np.random.normal(0.0, 0.035, samples_to_generate)
             else:
-                break
-        
+                fibrillation = 0.0
+                noise = np.random.normal(0.0, 0.02, samples_to_generate)
+
+            beat_signal = (
+                p_wave
+                + q_wave
+                + r_wave
+                + s_wave
+                + t_wave
+                + baseline
+                + fibrillation
+                + noise
+            )
+
+            signal[current_sample:current_sample + samples_to_generate] = beat_signal.astype(np.float32)
+            self._sample_index += samples_to_generate
+            current_sample += samples_to_generate
+            self._beat_elapsed += samples_to_generate / self._sample_rate
+
+            if self._beat_elapsed >= self._next_beat_time - 1e-6:
+                self._beat_elapsed -= self._next_beat_time
+                if self._afib:
+                    self._next_beat_time = np.random.uniform(0.4, 1.0)
+                else:
+                    self._next_beat_time = 0.8
+
         return signal.astype(np.float32)
 
     def _is_running_locked(self) -> bool:
